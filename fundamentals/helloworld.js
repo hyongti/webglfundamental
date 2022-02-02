@@ -13,7 +13,7 @@ function main() {
     // x, y만 사용하므로 2차원 벡터로
     attribute vec2 a_position;
   
-    // uniform을 추가해줬으므로, 63번, 105번 라인도 추가
+    // uniform을 추가해줬으므로, 68번, 110번 라인도 추가
     uniform vec2 u_resolution;
   
     void main() {
@@ -36,9 +36,12 @@ function main() {
     // "mediump"은 좋은 기본값으로 "중간 정밀도"를 의미합니다.
     precision mediump float;
     
+    // 72번 라인 추가
+    uniform vec4 u_color;
+
     void main() {
       // "gl_FragColor"는 프래그먼트 셰이더가 설정을 담당하는 특수 변수
-      gl_FragColor = vec4(1, 0, 0.5, 1); // 자주색 반환
+      gl_FragColor = u_color;
     }
   `;
 
@@ -66,6 +69,7 @@ function main() {
     program,
     "u_resolution"
   );
+  var colorUniformLocation = gl.getUniformLocation(program, "u_color");
 
   // attribute는 버퍼에서 데이터를 가져오므로 버퍼를 생성함
   var positionBuffer = gl.createBuffer();
@@ -124,6 +128,51 @@ function main() {
     offset
   );
 
+  // 임의의 색상으로 임의의 사각형 50개 그리기
+  for (var ii = 0; ii < 50; ++ii) {
+    // 임의의 사각형 설정
+    // ARRAY_BUFFER 바인드 포인트에 마지막으로 바인딩한 것이므로 `positionBuffer`에 작성됩니다.
+    setRectangle(
+      gl,
+      randomInt(300),
+      randomInt(300),
+      randomInt(300),
+      randomInt(300)
+    );
+
+    // 임의의 색상 설정
+    gl.uniform4f(
+      colorUniformLocation,
+      Math.random(),
+      Math.random(),
+      Math.random(),
+      1
+    );
+
+    // 사각형 그리기
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+
+  // 0부터 -1사이 임의의 정수 반환
+  function randomInt(range) {
+    return Math.floor(Math.random() * range);
+  }
+
+  // 사각형을 정의한 값들로 버퍼 채우기
+  function setRectangle(gl, x, y, width, height) {
+    var x1 = x;
+    var x2 = x + width;
+    var y1 = y;
+    var y2 = y + height;
+
+    // 참고: gl.bufferData(gl.ARRAY_BUFFER, ...)는 `ARRAY_BUFFER` 바인드 포인트에 바인딩된 버퍼에 영향을 주지만 지금까지는 하나의 버퍼만 있었습니다.
+    // 두 개 이상이라면 원하는 버퍼를 `ARRAY_BUFFER`에 먼저 바인딩해야 합니다.
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2]),
+      gl.STATIC_DRAW
+    );
+  }
   // draw
   var primitiveType = gl.TRIANGLES;
   var offset = 0;
