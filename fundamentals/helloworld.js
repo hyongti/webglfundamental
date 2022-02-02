@@ -1,4 +1,4 @@
-import webglUtils from "./webglUtils";
+import webglUtils from "./webglUtils.js";
 
 function main() {
   // Get A WebGL context
@@ -10,15 +10,26 @@ function main() {
 
   // webGL 셰이더를 위한 소스
   var vertexShaderSource = `
-    // 속성은 버퍼에서 데이터를 받습니다.
-    attribute vec4 a_position;
+    // x, y만 사용하므로 2차원 벡터로
+    attribute vec2 a_position;
   
-    // 모든 셰이더는 main 함수를 가집니다.
+    // uniform을 추가해줬으므로, 63번, 105번 라인도 추가
+    uniform vec2 u_resolution;
+  
     void main() {
-  
-    // "gl_Position"은 정점 셰이더가 설정을 담당하는 특수 변수
-    gl_Position = a_position;
-  }
+    // 위치를 픽셀에서 0.0과 1.0사이로 변환
+    vec2 zeroToOne = a_position / u_resolution;
+
+    // 0->1에서 0->2로 변환
+    vec2 zeroToTwo = zeroToOne * 2.0;
+
+    // 0->2에서 -1->+1로 변환 (클립 공간)
+    vec2 clipSpace = zeroToTwo - 1.0;
+
+    // 클립스페이스에서는 위가 + 아래가 - 인데 아래와 같이 vec2(1, -1)을 곱함으로써 전통적인 좌표계를 얻을 수 있음
+    gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+    }
+    // vertexShaderSource를 위와 같이 바꿔서 이제 클립공간이 아닌 픽셀로 작업 가능
   `;
   var fragmentShaderSource = `
     // 프래그먼트 셰이더는 기본 정밀도를 가지고 있지 않으므로 하나를 선택해야 합니다.
@@ -51,6 +62,10 @@ function main() {
   // attribute vec4 a_position
   // 속성과 유니폼 위치를 찾는 것은 렌더링할 때가 아니라 초기화하는 동안 해야 함
   var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+  var resolutionUniformLocation = gl.getUniformLocation(
+    program,
+    "u_resolution"
+  );
 
   // attribute는 버퍼에서 데이터를 가져오므로 버퍼를 생성함
   var positionBuffer = gl.createBuffer();
@@ -62,7 +77,8 @@ function main() {
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
   // 이제 바인드포인트를 통해 해당 버퍼를 참조해서 데이터를 넣을 수 있음
-  var positions = [0, 0, 0, 0.5, 0.7, 0];
+  var positions = [10, 20, 80, 20, 10, 30, 10, 30, 80, 20, 80, 30];
+
   // webGL은 강력한 데이터 타입을 가지는 데이터가 필요하므로 Float32Array(positions)를 통해 부동 소수점 배열을 생성하고 값을 복사
   // gl.bufferData는 데이터를 GPU의 positionBuffer로 복사함(위에서 ARRAY_BUFFER 바인드포인트에 positionBuffer를 할당해서 가능)
   // gl.STATIC_DRAW는 데이터를 어떻게 사용할 것인지 webGL에게 알려줌. STATIC_DRAW는 데이터가 많이 바뀌지 않을 것 같다고 알려주는 것임.
@@ -86,6 +102,8 @@ function main() {
 
   // 위에서 설정한 버퍼에서 데이터를 가져와 셰이더의 속성에 제공하는 방법을 WebGL에 알려줘야 함. 우선 속성을 활성화해야 함.
   gl.enableVertexAttribArray(positionAttributeLocation);
+  // 해상도 설정
+  gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
   // 위치 버퍼 할당(위에서 해준 거 아닌가? -> 잘 모르겠음)
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -109,7 +127,7 @@ function main() {
   // draw
   var primitiveType = gl.TRIANGLES;
   var offset = 0;
-  var count = 3;
+  var count = 6; // count만큼 그리는 것
   gl.drawArrays(primitiveType, offset, count);
 }
 
